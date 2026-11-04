@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор карточек товаров</title>
+  <style>
+    :root {
+      --primary: #2b5aa7; --primary-dark: #1e4482;
+      --bg: #f4f6fa; --card: #ffffff; --border: #d7dce5;
+      --ok: #1e7e34; --warn: #b9770e; --err: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); margin: 0; padding: 24px 16px; color: #2c3340; }
+    .container { max-width: 760px; margin: 0 auto; }
+    h1 { color: var(--primary); font-size: 1.45rem; margin: 0 0 6px; }
+    .subtitle { color: #6b7688; margin: 0 0 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; margin-bottom: 18px; }
+    .step-title { display: flex; align-items: center; gap: 10px; font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
+    .step-num { background: var(--primary); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; flex: 0 0 auto; }
+    .hint { color: #6b7688; font-size: .88rem; margin: 2px 0 10px; }
+    label { display: block; font-weight: 600; margin: 12px 0 4px; }
+    label .req { color: var(--err); }
+    input[type=text], textarea, select {
+      width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.98rem; font-family: inherit; background: #fff;
+    }
+    input:focus, textarea:focus, select:focus { outline: 2px solid #9db8dd; border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 80px; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+    .specs-list .spec-row { display: flex; gap: 10px; margin-bottom: 8px; }
+    .spec-row input { flex: 1; }
+    .spec-row .remove { flex: 0 0 auto; background: transparent; color: #8a94a6; font-size: 1.2rem; padding: 4px 10px; }
+    .spec-row .remove:hover { color: var(--err); }
+    button { background: var(--primary); color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 0.98rem; cursor: pointer; font-family: inherit; }
+    button:hover { background: var(--primary-dark); }
+    button.secondary { background: #e8ecf3; color: #2c3340; }
+    button.secondary:hover { background: #d8deea; }
+    button.big { width: 100%; padding: 14px; font-size: 1.1rem; font-weight: 700; }
+    button:disabled { opacity: 0.55; cursor: wait; }
+    #status { margin: 12px 0 0; font-weight: 600; min-height: 1.4em; }
+    #status.ok { color: var(--ok); }
+    #status.err { color: var(--err); }
+    #status.busy { color: var(--warn); }
+    #result { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.5; max-height: 520px; overflow: auto;
+      background: #fafbfd; border: 1px solid var(--border); border-radius: 6px; padding: 14px; }
+    .error { color: var(--err); font-weight: 600; }
+    .notice { border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: .92rem; }
+    .notice-warn { background: #fdf3e0; border: 1px solid #f0d9a8; }
+    .notice-warn strong { color: var(--warn); }
+    .notice ul { margin: 6px 0 0 18px; padding: 0; }
+    .result-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    details { margin-top: 16px; }
+    summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+    .empty { color: #9aa4b5; text-align: center; padding: 24px 0; }
+    .footer { color: #9aa4b5; font-size: .82rem; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Генератор карточек товаров</h1>
+  <p class="subtitle">Заполните поля — программа сама подготовит готовую карточку для сайта.</p>
+
+  <!-- ===== ШАГ 1 ===== -->
+  <div class="card">
+    <p class="step-title"><span class="step-num">1</span> Что за прибор?</p>
+    <p class="hint">Обязательно заполните оба поля.</p>
+
+    <label for="name">Название прибора <span class="req">*</span></label>
+    <input type="text" id="name" placeholder="Например: Манометр показывающий DM 02">
+
+    <label for="manufacturer">Производитель <span class="req">*</span></label>
+    <input type="text" id="manufacturer" placeholder="Например: Манотомь">
+  </div>
+
+  <!-- ===== ШАГ 2 ===== -->
+  <div class="card">
+    <p class="step-title"><span class="step-num">2</span> Характеристики</p>
+    <p class="hint">Параметр — это название характеристики (например, «класс точности»), значение — её величина. Пустые строки можно пропустить.</p>
+    <div class="specs-list" id="specs"></div>
+    <button type="button" class="secondary" onclick="addSpecRow()">+ Добавить характеристику</button>
+  </div>
+
+  <!-- ===== ШАГ 3 ===== -->
+  <div class="card">
+    <p class="step-title"><span class="step-num">3</span> Описание прибора</p>
+    <p class="hint">Скопируйте сюда описание от производителя, если оно есть. Чем больше данных — тем лучше получится карточка. Это поле можно оставить пустым.</p>
+    <textarea id="description" placeholder="Прибор предназначен для измерения избыточного давления..."></textarea>
+
+    <details>
+      <summary>Дополнительно: вставить данные как JSON (для программистов)</summary>
+      <label for="json-input">Входной JSON</label>
+      <textarea id="json-input" placeholder='{
+  "name": "Манометр показывающий DM 02",
+  "manufacturer": "Манотомь",
+  "specs": { "класс точности": "1,5" },
+  "description": "Прибор предназначен для..."
+}'></textarea>
+      <p><button type="button" class="secondary" onclick="loadJson()">Заполнить форму из JSON</button></p>
+    </details>
+  </div>
+
+  <!-- ===== ШАГ 4: ГЕНЕРАЦИЯ ===== -->
+  <div class="card">
+    <p class="step-title"><span class="step-num">4</span> Создать карточку</p>
+    <label for="format">В каком виде нужен результат?</label>
+    <select id="format">
+      <option value="markdown">Markdown — текст с разметкой для сайта</option>
+      <option value="text">Обычный текст — удобно читать и править</option>
+      <option value="json">JSON — для загрузки в другие системы</option>
+    </select>
+    <p class="hint" id="format-lock-hint" style="display:none;">Формат зафиксирован: карточка скачается именно в нём. Чтобы выбрать другой формат — нажмите «Очистить всё» и сгенерируйте заново.</p>
+    <p>
+      <button id="generate-btn" class="big" onclick="generate()">✨ Создать карточку</button>
+    </p>
+    <div id="status"></div>
+  </div>
+
+  <!-- ===== РЕЗУЛЬТАТ ===== -->
+  <div class="card">
+    <p class="step-title"><span class="step-num">✔</span> Готовая карточка</p>
+    <div id="missing" class="notice notice-warn" style="display:none;">
+      <strong>⚠ Не хватает данных — лучше их уточнить:</strong>
+      <ul id="missing-list"></ul>
+    </div>
+    <div id="warnings" class="notice notice-warn" style="display:none;">
+      <strong>⚠ Замечания к карточке:</strong>
+      <ul id="warnings-list"></ul>
+    </div>
+    <div id="result" class="empty">Здесь появится готовая карточка.<br>Заполните шаги 1–4 и нажмите «Создать карточку».</div>
+    <div class="result-actions">
+      <button type="button" class="secondary" onclick="copyResult()">📋 Копировать текст</button>
+      <button type="button" class="secondary" onclick="downloadResult()">⬇ Скачать файлом</button>
+      <button type="button" class="secondary" onclick="clearAll()">🧹 Очистить всё и начать заново</button>
+    </div>
+  </div>
+
+  <p class="footer">Сервис карточек приборов · вопросы по работе — к ИТ-специалисту</p>
+</div>
+
+<script>
+  // ---------- Характеристики ----------
+
+  function addSpecRow(key = '', value = '') {
+    const row = document.createElement('div');
+    row.className = 'spec-row';
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'spec-key';
+    keyInput.placeholder = 'Параметр (например, класс точности)';
+    keyInput.value = key;
+    const valInput = document.createElement('input');
+    valInput.type = 'text';
+    valInput.className = 'spec-value';
+    valInput.placeholder = 'Значение (например, 1,5)';
+    valInput.value = value;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'remove';
+    del.title = 'Удалить строку';
+    del.textContent = '×';
+    del.onclick = () => row.remove();
+    row.append(keyInput, valInput, del);
+    document.getElementById('specs').appendChild(row);
+  }
+
+  function collectSpecs() {
+    const specs = {};
+    document.querySelectorAll('#specs .spec-row').forEach(row => {
+      const k = row.querySelector('.spec-key').value.trim();
+      const v = row.querySelector('.spec-value').value.trim();
+      if (k) specs[k] = v;
+    });
+    return specs;
+  }
+
+  // ---------- Сбор данных и отправка ----------
+
+  function collectPayload() {
+    return {
+      device: {
+        name: document.getElementById('name').value.trim(),
+        manufacturer: document.getElementById('manufacturer').value.trim(),
+        specs: collectSpecs(),
+        description: document.getElementById('description').value.trim()
+      },
+      output_format: document.getElementById('format').value
+    };
+  }
+
+  function setStatus(text, kind) {
+    const el = document.getElementById('status');
+    el.className = kind || '';
+    el.textContent = text;
+  }
+
+  // Понятные человеку сообщения об ошибках
+  function friendlyError(serverDetail, statusCode) {
+    if (statusCode === 422) {
+      return 'Проверьте заполнение формы: нужно указать название прибора и производителя.';
+    }
+    if (statusCode === 502) {
+      return 'Сервис не смог получить ответ от нейросети GigaChat. ' +
+             'Подождите минуту и нажмите «Создать карточку» ещё раз. ' +
+             'Если не помогает — сообщите ИТ-специалисту.';
+    }
+    if (statusCode === 0 || statusCode === undefined) {
+      return 'Нет связи с программой. Проверьте, что запущено окно «Сервис карточек приборов».';
+    }
+    return serverDetail || 'Что-то пошло не так. Попробуйте ещё раз или обратитесь к ИТ-специалисту.';
+  }
+
+  async function generate() {
+    const btn = document.getElementById('generate-btn');
+    const payload = collectPayload();
+
+    // Мягкая проверка до отправки — без технических слов
+    const problems = [];
+    if (!payload.device.name) problems.push('название прибора (шаг 1)');
+    if (!payload.device.manufacturer) problems.push('производитель (шаг 1)');
+    if (problems.length) {
+      setStatus('Заполните, пожалуйста: ' + problems.join(' и '), 'err');
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus('Формируем карточку... обычно это занимает 10–30 секунд.', 'busy');
+    const result = document.getElementById('result');
+    result.className = '';
+    result.textContent = 'Ждём ответ от нейросети...';
+
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw { status: resp.status, detail: typeof data.detail === 'string' ? data.detail : '' };
+      currentResult = data.content;
+      currentFormat = data.output_format || payload.output_format;
+      lockFormat();
+      result.className = '';
+      result.textContent = data.content;
+      renderList('missing', 'missing-list', data.missing_fields || []);
+      renderList('warnings', 'warnings-list', data.warnings || []);
+      setStatus('✔ Готово! Карточка ниже — её можно скопировать или скачать.', 'ok');
+    } catch (e) {
+      const status = e && e.status;
+      const detail = e && e.detail;
+      result.className = 'empty';
+      result.textContent = 'Карточка не получилась. Исправьте ошибку и попробуйте ещё раз.';
+      setStatus(friendlyError(detail, status), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderList(blockId, listId, items) {
+    const block = document.getElementById(blockId);
+    const list = document.getElementById(listId);
+    list.innerHTML = '';
+    if (!items.length) { block.style.display = 'none'; return; }
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      list.appendChild(li);
+    });
+    block.style.display = 'block';
+  }
+
+  // ---------- Импорт из JSON (раздел «Дополнительно») ----------
+
+  function loadJson() {
+    try {
+      const data = JSON.parse(document.getElementById('json-input').value);
+      document.getElementById('name').value = data.name || '';
+      document.getElementById('manufacturer').value = data.manufacturer || '';
+      document.getElementById('description').value = data.description || '';
+      document.getElementById('specs').innerHTML = '';
+      Object.entries(data.specs || {}).forEach(([k, v]) => addSpecRow(k, v));
+      setStatus('Форма заполнена из JSON', 'ok');
+    } catch (e) {
+      setStatus('Ошибка в JSON: ' + e.message, 'err');
+    }
+  }
+
+  // ---------- Работа с результатом ----------
+
+  let currentResult = '';
+  let currentFormat = '';
+
+  // Формат фиксируется в момент генерации: скачаться может только он
+  function lockFormat() {
+    document.getElementById('format').disabled = true;
+    document.getElementById('format-lock-hint').style.display = 'block';
+  }
+
+  function unlockFormat() {
+    document.getElementById('format').disabled = false;
+    document.getElementById('format-lock-hint').style.display = 'none';
+  }
+
+  function copyResult() {
+    if (!currentResult) return;
+    navigator.clipboard.writeText(currentResult).then(
+      () => setStatus('✔ Результат скопирован в буфер обмена', 'ok'),
+      () => setStatus('Не удалось скопировать — выделите текст и скопируйте вручную', 'err')
+    );
+  }
+
+  function downloadResult() {
+    if (!currentResult) return;
+    const ext = currentFormat === 'markdown' ? 'md' : currentFormat;
+    const name = (document.getElementById('name').value.trim() || 'карточка')
+      .replace(/[\\/:*?"<>|]+/g, ' ').trim();
+    const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name + '.' + ext;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus('✔ Файл скачан', 'ok');
+  }
+
+  function clearAll() {
+    if (currentResult && !confirm('Очистить форму и результат?')) return;
+    unlockFormat();
+    currentFormat = '';
+    document.getElementById('name').value = '';
+    document.getElementById('manufacturer').value = '';
+    document.getElementById('description').value = '';
+    document.getElementById('json-input').value = '';
+    document.getElementById('specs').innerHTML = '';
+    addSpecRow();
+    currentResult = '';
+    const result = document.getElementById('result');
+    result.className = 'empty';
+    result.innerHTML = 'Здесь появится готовая карточка.<br>Заполните шаги 1–4 и нажмите «Создать карточку».';
+    ['missing', 'warnings'].forEach(id => document.getElementById(id).style.display = 'none');
+    setStatus('', '');
+  }
+
+  // Стартовое состояние: одна пустая строка характеристик
+  addSpecRow();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+[project]
+name = "cards-service"
+version = "0.1.0"
+description = "Генератор карточек приборов: FastAPI + GigaChat"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "gigachat>=0.1.39",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+# uv автоматически создаёт .venv и ставит зависимости из этого файла
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+# Depends() в дефолтах аргументов — стандартный паттерн FastAPI
+"app/main.py" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
